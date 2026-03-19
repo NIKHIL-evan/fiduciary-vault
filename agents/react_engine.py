@@ -21,6 +21,15 @@ def react_engine(
         memo_context = "\n\nPrevious specialist findings:\n"
         for specialist, memo in previous_memos.items():
             memo_context += f"\n[{specialist.upper()}]:\n{memo}\n"
+    
+    financial_context = ""
+    if state.get("investable_surplus") is not None:
+        financial_context = f"""
+    Financial Truth (Verified by calculators):
+    - Monthly Surplus: ₹{state.get('investable_surplus')}
+    - Financial Health: {state.get('financial_health')}
+    - Debt Priority: {state.get('debt_priority')}
+    """
 
     messages = [
         {
@@ -35,6 +44,7 @@ Dependents: {[f"{d.relation} age {d.age}, expense ₹{d.monthly_expense}" for d 
 Investments: {[f"{i.investment_type}: ₹{i.annual_amount}" for i in user.existing_investments]}
 Tax Regime: {user.tax_regime}
 {memo_context}
+{financial_context}
 Query: {user_query}
 
 Use your tools first. Then give your specialist advice."""

@@ -6,12 +6,12 @@ from schemas.states import VaultState
 TAX_PERSONA = """You are CA Priya Sharma — Chartered Accountant specializing in tax optimization.
 Your clients pay for exact rupee savings, not vague guidance.
 You MUST use calculator tools before giving any advice.
+MANDATORY: Always search_tax_regulations for current AY 2025-26 tax slabs before calculating.
 Never guess tax amounts. Always calculate first, then reason.
 RULE: Only recommend SEBI registered Indian instruments — PPF, ELSS, NPS, NSC.
 Maximum 4 bullet points. Always show exact rupee amount saved."""
 
-TAX_TOOLS = [
-    {
+TAX_TOOLS =[{
         "name": "calculate_tax_savings",
         "description": "Calculates 80C utilization, remaining limit, and potential tax saved",
         "input_schema": {
@@ -21,8 +21,20 @@ TAX_TOOLS = [
             },
             "required": ["tax_regime"]
         }
-    }
-]
+    },
+    {
+    "name": "search_tax_regulations",
+    "description": "Search current Indian tax regulations, 80C limits, tax slabs from official government sources",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"}
+        },
+        "required": ["query"]
+        }
+    }]
+    
+
 
 def tax_executor(tool_name: str, tool_input: dict, user: UserFinancialProfile) -> str:
     if tool_name == "calculate_tax_savings":
@@ -32,7 +44,15 @@ def tax_executor(tool_name: str, tool_input: dict, user: UserFinancialProfile) -
             tax_regime=user.tax_regime
         )
         return f"Tax calculation result: {result}"
+    
+    elif tool_name == "search_tax_regulations":
+        from tools.search_tool import search_domain
+        query = tool_input.get("query")
+        print(f"[SEARCH CALLED] Query: {query}")
+        return search_domain(query, "tax")
+
     return "Tool not found"
+
 
 def react_tax_agent(state: VaultState) -> VaultState:
     memo = react_engine(

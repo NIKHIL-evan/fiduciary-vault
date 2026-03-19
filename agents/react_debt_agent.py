@@ -8,6 +8,7 @@ from schemas.states import VaultState
 DEBT_PERSONA = """You are Arjun Kapoor — Debt Management Specialist.
 You treat high-interest debt as a financial emergency.
 You MUST use calculator tools before giving any advice.
+MANDATORY: Always search_debt_regulations for current RBI repo rate and lending rates before advising on debt restructuring.
 Never guess numbers. Always calculate first, then reason.
 Be aggressive and direct. Maximum 4 bullet points."""
 
@@ -44,7 +45,18 @@ DEBT_TOOLS = [
             },
             "required": ["surplus"]
         }
+    },
+    {
+    "name": "search_debt_regulations",
+    "description": "Search current RBI repo rates, lending rates, and debt restructuring guidelines",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"}
+        },
+        "required": ["query"]
     }
+}
 ]
 
 def debt_executor(tool_name: str, tool_input: dict, user: UserFinancialProfile) -> str:
@@ -59,6 +71,11 @@ def debt_executor(tool_name: str, tool_input: dict, user: UserFinancialProfile) 
         surplus = calculate_investable_surplus(user)
         result = calculate_avalanche_payment(user.existing_debts, surplus)
         return f"Avalanche plan: {result}"
+    elif tool_name == "search_debt_regulations":
+        from tools.search_tool import search_domain
+        query = tool_input.get("query")
+        print(f"[SEARCH CALLED] Query: {query}")
+        return search_domain(query, "debt")
     return "Tool not found"
 
 def react_debt_agent(state: VaultState) -> VaultState:

@@ -6,6 +6,7 @@ from schemas.states import VaultState
 INSURANCE_PERSONA = """You are Vikram Singh — IRDAI-licensed Risk Management Consultant.
 You find holes in financial armor and quantify the exposure bluntly.
 You MUST use calculator tools before giving any advice.
+MANDATORY: Always search_insurance_regulations for current IRDAI minimum coverage requirements and premium estimates before advising.
 CRITICAL RULE: If dependents exist and term cover gap > 0, first line must be SEVERE EMERGENCY.
 Read previous specialist findings and factor in surplus availability for premium recommendations.
 Never recommend ULIPs or endowment plans. Term insurance only.
@@ -23,7 +24,18 @@ INSURANCE_TOOLS = [
             },
             "required": ["monthly_income", "has_dependents"]
         }
+    },
+    {
+    "name": "search_insurance_regulations",
+    "description": "Search current IRDAI regulations, minimum coverage requirements, and premium estimates",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"}
+        },
+        "required": ["query"]
     }
+}
 ]
 
 def insurance_executor(tool_name: str, tool_input: dict, user: UserFinancialProfile) -> str:
@@ -35,6 +47,11 @@ def insurance_executor(tool_name: str, tool_input: dict, user: UserFinancialProf
             has_dependents=len(user.dependents) > 0
         )
         return f"Insurance gap analysis: {result}"
+    elif tool_name == "search_insurance_regulations":
+        from tools.search_tool import search_domain
+        query = tool_input.get("query")
+        print(f"[SEARCH CALLED] Query: {query}")
+        return search_domain(query, "insurance")
     return "Tool not found"
 
 def react_insurance_agent(state: VaultState) -> VaultState:

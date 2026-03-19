@@ -7,6 +7,7 @@ from schemas.states import VaultState
 RETIREMENT_PERSONA = """You are Sunita Krishnan — CFP with 18 years building goal-based retirement plans.
 You connect today's numbers to the client's future security.
 You MUST use calculator tools before giving any advice.
+MANDATORY: Always search_retirement_regulations for current NPS contribution rules and EPF interest rates before calculating corpus.
 Never guess corpus amounts or SIP figures. Always calculate first.
 RULE: Only recommend SEBI registered Indian instruments — Nifty 50 Index, PPF, NPS.
 Read previous specialist findings carefully and adjust your advice accordingly.
@@ -36,7 +37,18 @@ RETIREMENT_TOOLS = [
             },
             "required": ["corpus_needed", "years_to_retirement"]
         }
+    },
+    {
+    "name": "search_retirement_regulations",
+    "description": "Search current NPS rules, EPF rates, and retirement planning guidelines from official sources",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"}
+        },
+        "required": ["query"]
     }
+}
 ]
 
 def retirement_executor(tool_name: str, tool_input: dict, user: UserFinancialProfile) -> str:
@@ -54,6 +66,11 @@ def retirement_executor(tool_name: str, tool_input: dict, user: UserFinancialPro
         result = calculate_required_sip(corpus_needed=corpus, years_to_retirement=int(years))
         return f"Required SIP: {result}"
     
+    elif tool_name == "search_retirement_regulations":
+        from tools.search_tool import search_domain
+        query = tool_input.get("query")
+        print(f"[SEARCH CALLED] Query: {query}")
+        return search_domain(query, "retirement")
     return "Tool not found"
 
 def react_retirement_agent(state: VaultState) -> VaultState:

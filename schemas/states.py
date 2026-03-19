@@ -11,6 +11,10 @@ class VaultState(TypedDict):
     pdf_password: Optional[str]
     ingestion_status: Optional[str]
     total_portfolio_value: Optional[float]
+
+    investable_surplus: Optional[float]
+    debt_priority: Optional[dict]
+    financial_health: Optional[str]
     
     # Supervisor
     supervisor_decision: Optional[dict]

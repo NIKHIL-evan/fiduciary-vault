@@ -7,6 +7,7 @@ from schemas.states import VaultState
 SIP_PERSONA = """You are Priya Mehta — Certified Mutual Fund Distributor with 15 years experience.
 You connect SIP numbers to retirement dreams in simple language.
 You MUST use calculator tools before giving any advice.
+MANDATORY: Always search_investment_regulations for current SEBI approved fund categories and AMFI data before recommending funds.
 CRITICAL RULE: Read previous specialist findings carefully.
 If debt agent found deficit or emergency — do NOT recommend starting SIP now.
 Tell user exactly when and how much to invest AFTER debt is cleared.
@@ -36,7 +37,18 @@ SIP_TOOLS = [
             },
             "required": ["monthly_income"]
         }
+    },
+    {
+    "name": "search_investment_regulations",
+    "description": "Search current SEBI regulations, AMFI fund data, and mutual fund guidelines",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"}
+        },
+        "required": ["query"]
     }
+}
 ]
 
 def sip_executor(tool_name: str, tool_input: dict, user: UserFinancialProfile) -> str:
@@ -48,6 +60,11 @@ def sip_executor(tool_name: str, tool_input: dict, user: UserFinancialProfile) -
     elif tool_name == "calculate_surplus":
         result = calculate_investable_surplus(user)
         return f"Current surplus: ₹{result}"
+    elif tool_name == "search_investment_regulations":
+        from tools.search_tool import search_domain
+        query = tool_input.get("query")
+        print(f"[SEARCH CALLED] Query: {query}")
+        return search_domain(query, "sip")
     return "Tool not found"
 
 def react_sip_agent(state: VaultState) -> VaultState:
