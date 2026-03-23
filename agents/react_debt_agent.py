@@ -5,52 +5,57 @@ from calculators.debt_avalanche import calculate_avalanche_payment
 from agents.react_engine import react_engine
 from schemas.states import VaultState
 
-DEBT_PERSONA = """You are Arjun Kapoor — Debt Management Specialist, 15 years experience clearing Indian families from debt traps.
-You are aggressive, direct, and treat high-interest debt as a financial emergency. You have zero patience for excuses.
+DEBT_PERSONA = """You are Arjun Kapoor — Debt Strategist.
+You are speaking in a group chat. The Chief Fiduciary has already spoken and set the direction.
 
 IDENTITY:
-You've seen credit card debt destroy families. You don't soften bad news.
-You speak like a strict but caring elder brother who knows finance.
-
-ADAPTIVE RESPONSE RULE (MOST IMPORTANT):
-- Simple question → answer in 2-3 lines. No report.
-- "Should I prepay my loan?" → direct yes/no with one reason
-- Detailed analysis requested → full structured format
-- Knowledgeable user → skip basics, give exact numbers and strategy
-- Confused user → use simple analogies ("your credit card is a leaking bucket")
-- Never write a 500-word report when user asks one question
+You are aggressive, no-nonsense, and treat high-interest debt like an enemy to be destroyed.
+You use war metaphors. You speak like a battle-hardened strategist who has seen debt destroy families.
+You address the user directly by name. You never soften bad news.
 
 RESEARCH RULE:
-Always use calculator tools first for debt math.
-Use search_debt_regulations to verify current RBI repo rates and lending rates before advising on restructuring or balance transfers. Never quote rates from memory.
+Use search_debt_regulations to verify current RBI repo rates and lending rates before advising.
+Never quote rates from memory.
+REASONING RULE:
+If no specific calculator exists for the user's question:
+1. Use available calculators creatively to get relevant numbers
+2. Use search tools to get current rates and data
+3. Reason with those numbers to give a precise answer
+Never say "I don't have a tool for that."
+Always find a way to give a number-backed answer.
 
-DEBT HIERARCHY (NON-NEGOTIABLE):
-- >30% interest → EMERGENCY. Stop everything. Clear this first.
-- 12-30% interest → HIGH PRIORITY. No new investments until cleared.
-- <12% interest → LOW PRIORITY. Pay minimum, invest the rest.
-- Home loan interest is tax deductible — factor this before advising prepayment.
+ADAPTIVE RESPONSE RULE:
+- Full analysis → war plan with exact steps, amounts, timeline
+- Specific question → direct tactical answer, one number, one action
+- Casual question → sharp, punchy response
 
-FULL REPORT FORMAT (only when full analysis requested):
-🚨 DEBT EMERGENCY LEVEL
-[CRITICAL / HIGH / MANAGEABLE — one sentence why]
+GROUP CHAT RULES:
+1. RELEVANCE: If user has NO debt and query is about tax or insurance → output exactly: SKIP
+2. THE ANCHOR: Read CORE_DIRECTIVE silently. Act on it. Never say "I agree with Ramesh."
+   Open with YOUR insight directly.
+3. TEAM AWARENESS: Read TEAM_BRIEFs. Never repeat what others said.
 
-💣 YOUR DEBT REALITY
-[Each debt: type, rate, monthly cost in rupees — brutal truth]
+ANTI-REPETITION RULE:
+Never open with validation of another specialist.
+Your first line must be YOUR aggressive debt insight.
 
-✅ ATTACK PLAN (max 3 steps)
-1. [Exact action] → [Rupee impact]
-2. [Exact action] → [Rupee impact]
-3. [Exact action] → [Rupee impact]
+PROACTIVE ADVICE:
+Find balance transfer opportunities. Suggest pausing SIPs for 14%+ loans.
+Show the rupee cost of minimum payment trap. Make debt feel like the enemy it is.
 
-📅 DEBT-FREE TIMELINE
-[Realistic months to freedom with exact numbers]
+DEBT RULES:
+- >30% → EMERGENCY. Destroy immediately.
+- 12-30% → HIGH PRIORITY. No investments until cleared.
+- <12% → LOW PRIORITY. Factor tax benefits before prepayment.
 
-LANGUAGE RULES:
-- No jargon without explanation
-- Be aggressive but not rude
-- Every interest rate must be shown as annual rupee cost
-- Maximum 150 words for simple queries
-- Maximum 300 words for full analysis"""
+RESPONSE FORMAT:
+Natural paragraphs. War metaphors welcome. Exact numbers always.
+No headers. No templates.
+
+TEAM_BRIEF FORMAT (MANDATORY — hidden from user):
+TEAM_BRIEF: STATUS: [EMERGENCY/CAUTION/HEALTHY] | PLAN: [your recommendation within 20 words] | BLOCKED: [what you blocked] | KEY_NUMBER: [most critical figure]
+
+LANGUAGE: English. Aggressive. Precise. War-like.Use Hindi when you want to connect with the user."""
 
 DEBT_TOOLS = [
     {
@@ -96,6 +101,54 @@ DEBT_TOOLS = [
         },
         "required": ["query"]
     }
+},
+{
+    "name": "calculate_balance_transfer",
+    "description": "Calculates if transferring high-interest debt to lower rate saves money",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "current_rate": {"type": "number"},
+            "new_rate": {"type": "number"},
+            "balance": {"type": "number"}
+        },
+        "required": ["current_rate", "new_rate", "balance"]
+    }
+},
+{
+    "name": "calculate_prepayment_benefit",
+    "description": "Shows interest saved and years reduced by paying extra on a loan",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "extra_monthly_payment": {"type": "number"},
+            "debt_type": {"type": "string"}
+        },
+        "required": ["extra_monthly_payment", "debt_type"]
+    }
+},
+{
+    "name": "calculate_cheapest_capital",
+    "description": "Finds cheapest way to raise emergency funds — LAMF vs gold loan vs FD vs selling MF",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "amount_needed": {"type": "number"}
+        },
+        "required": ["amount_needed"]
+    }
+},
+{
+    "name": "calculate_debt_vs_investment",
+    "description": "Compares if prepaying loan gives better returns than investing the same money",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "loan_rate": {"type": "number"},
+            "investment_return": {"type": "number"}
+        },
+        "required": ["loan_rate", "investment_return"]
+    }
 }
 ]
 
@@ -114,17 +167,79 @@ def debt_executor(tool_name: str, tool_input: dict, user: UserFinancialProfile) 
     elif tool_name == "search_debt_regulations":
         from tools.search_tool import search_domain
         query = tool_input.get("query")
-        print(f"[SEARCH CALLED] Query: {query}")
         return search_domain(query, "debt")
+    elif tool_name == "calculate_balance_transfer":
+        from calculators.balance_transfer import calculate_balance_transfer_benefit
+        current_rate = tool_input.get("current_rate")
+        new_rate = tool_input.get("new_rate")
+        balance = tool_input.get("balance")
+        highest_debt = max(user.existing_debts, key=lambda d: d.interest_rate)
+        result = calculate_balance_transfer_benefit(
+            current_balance=balance or highest_debt.amount,
+            current_rate=current_rate or highest_debt.interest_rate,
+            new_rate=new_rate
+        )
+        return f"Balance transfer analysis: {result}"
+
+    elif tool_name == "calculate_prepayment_benefit":
+        from calculators.prepayment_benefit import calculate_prepayment_benefit
+        extra = tool_input.get("extra_monthly_payment")
+        debt_type = tool_input.get("debt_type", "home_loan")
+        target = next((d for d in user.existing_debts if debt_type in d.debt_type), None)
+        if not target:
+            target = min(user.existing_debts, key=lambda d: d.interest_rate)
+        result = calculate_prepayment_benefit(
+            principal=target.amount,
+            annual_rate=target.interest_rate,
+            tenure_years=20,
+            extra_monthly_payment=extra
+        )
+        return f"Prepayment benefit: {result}"
+
+    elif tool_name == "calculate_cheapest_capital":
+        from calculators.cheapest_capital import calculate_cheapest_capital
+        amount = tool_input.get("amount_needed")
+        mf_value = sum(i.annual_amount for i in user.existing_investments)
+        gold_value = sum(
+            a.estimated_value for a in user.illiquid_assets
+            if a.asset_type.lower() == "gold"
+        )
+        result = calculate_cheapest_capital(
+            amount_needed=amount,
+            mf_portfolio_value=mf_value,
+            gold_value=gold_value
+        )
+        return f"Cheapest capital options: {result}"
+
+    elif tool_name == "calculate_debt_vs_investment":
+        from calculators.debt_vs_investment import calculate_debt_vs_investment
+        result = calculate_debt_vs_investment(
+            loan_amount=sum(d.amount for d in user.existing_debts),
+            loan_rate=tool_input.get("loan_rate"),
+            investment_return=tool_input.get("investment_return"),
+            tax_bracket=30,
+            is_home_loan=any(d.debt_type == "home_loan" for d in user.existing_debts),
+            home_loan_interest_paid=sum(
+                d.amount * d.interest_rate / 100
+                for d in user.existing_debts
+                if d.debt_type == "home_loan"
+            )
+        )
+        return f"Debt vs investment analysis: {result}"
     return "Tool not found"
 
 def react_debt_agent(state: VaultState) -> VaultState:
-    memo = react_engine(
+    response, core_directive, team_brief = react_engine(
         user=state["user"],
         persona=DEBT_PERSONA,
         tools=DEBT_TOOLS,
         tool_executor=debt_executor,
-        user_query= "Analyze my debt situation and give me an action plan.",
+        user_query=state.get("user_query", "Analyze my debt situation and give me an action plan."),
         state=state
     )
-    return {"agent_memos": {"debt": memo}}
+    if response.strip() == "SKIP":
+        return {}
+    return {
+        "agent_memos": {"Debt Strategist": response},
+        "team_awareness": {"Debt Strategist": team_brief}
+    }

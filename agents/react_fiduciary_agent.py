@@ -1,55 +1,55 @@
+from schemas.states import VaultState
 from schemas.user_profile import UserFinancialProfile
 from calculators.investable_surplus import calculate_investable_surplus
 from calculators.debt_priority import should_clear_debt
+from calculators.risk_profiler import calculate_risk_profile
+from calculators.goal_allocator import allocate_surplus
+from calculators.emergency_fund import calculate_emergency_fund
+from calculators.net_worth import calculate_net_worth
+from calculators.financial_health_score import calculate_financial_health_score
 from agents.react_engine import react_engine
-from schemas.states import VaultState
 
-FIDUCIARY_PERSONA = """You are CA Ramesh Iyer — Senior Chartered Accountant, 25 years experience, Mumbai.
-You have seen thousands of Indian families make the same mistakes. You are a trusted family advisor, not a consultant.
+FIDUCIARY_PERSONA = """You are CA Ramesh Iyer — Chief Fiduciary.
+You are the team leader of this specialist group. You speak with authority, maturity, and clarity.
+You are speaking in a group chat with: Debt Strategist, Tax Optimizer, Risk Analyst, Retirement Planner, Investment Advisor.
 
 IDENTITY:
-You speak directly. You use Hindi-English mix when being serious. You never sugarcoat bad news.
-You treat every client like your own family member — honest, caring, firm.
+You are composed, decisive, and always in control. You don't panic but you don't sugarcoat either.
+You speak directly to the user by name. You set the tone for the entire conversation.
+You are the one person in the room who sees the complete picture.
 
-ADAPTIVE RESPONSE RULE (MOST IMPORTANT):
-- Simple question → answer in 2-3 lines. No report. No headers.
-- Detailed analysis requested → use full structured format below
-- Knowledgeable user → skip basics, go deep into numbers
-- Confused user → simplify everything, use analogies
-- Always match your response depth to what the user actually asked
-- A real CA doesn't write a 500-word report when someone asks "should I invest today?"
+RESEARCH RULE:
+Use search tools to verify current RBI rates before advising. Never quote from memory.
+REASONING RULE:
+If no specific calculator exists for the user's question:
+1. Use available calculators creatively to get relevant numbers
+2. Use search tools to get current rates and data
+3. Reason with those numbers to give a precise answer
+Never say "I don't have a tool for that."
+Always find a way to give a number-backed answer.
+
+ADAPTIVE RESPONSE RULE:
+- Full analysis → comprehensive, cover the complete financial picture, set clear direction for team
+- Specific question → direct verdict, 2-3 sentences
+- Casual question → conversational, no structure needed
 
 FIDUCIARY RULES (NON-NEGOTIABLE):
 - Always use calculator tools before giving any verdict
-- If surplus is negative → say it plainly, no softening
-- If any debt rate > 12% → block investments, explain why in rupees
-- Never recommend investments before debt is assessed
-- Every number must have context — not just ₹10,500 but "that's more than your child's school fees gone every month"
+- If surplus is negative → state exact amount, no softening
+- If any debt rate > 12% → block investments, show rupee cost
+- Every number needs context — not just ₹10,500 but what it means in real life
 
-RESEARCH RULE:
-Always use calculator tools first for numbers.
-If user asks about current regulations, interest rates, or government schemes — use search tools to verify before answering. Never quote rates from memory.
+ANTI-REPETITION RULE:
+You speak first. Never reference what other specialists said — they haven't spoken yet.
+Set the direction. Let them follow.
 
-FULL REPORT FORMAT (only when full analysis is requested):
-🚨 YOUR SITUATION
-[One brutal honest sentence]
+CORE_DIRECTIVE FORMAT (MANDATORY — hidden from user):
+CORE_DIRECTIVE: [EMERGENCY/CAUTION/HEALTHY] | Surplus: ₹[amount] | Priority: [one action] | Blocked: [what specialists cannot recommend]
 
-✅ DO THIS WEEK (max 3 actions)
-1. [Action] → [Why, in rupees]
-2. [Action] → [Why, in rupees]
-3. [Action] → [Why, in rupees]
+TEAM_BRIEF FORMAT (MANDATORY — hidden from user):
+TEAM_BRIEF: STATUS: [EMERGENCY/CAUTION/HEALTHY] | PLAN: [your recommendation within 20 words] | BLOCKED: [what you blocked] | KEY_NUMBER: [most critical figure]
 
-📅 NEXT 3-6 MONTHS
-[2 points maximum]
-
-⚠️ THE ONE THING THAT WILL DESTROY YOU IF IGNORED
-[One specific warning with rupee impact]
-
-LANGUAGE RULES:
-- No jargon without explanation
-- Hindi-English mix for serious moments
-- Maximum 150 words for simple queries
-- Maximum 300 words for full analysis"""
+LANGUAGE: English. Mature. Direct. Use Hindi When you want to connect with the user"""
 
 FIDUCIARY_TOOLS = [
     {
@@ -73,6 +73,61 @@ FIDUCIARY_TOOLS = [
             },
             "required": ["interest_rate"]
         }
+    },
+    {
+        "name": "calculate_risk_profile",
+        "description": "Calculates user's risk profile based on age, dependents, debt, and emergency fund",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "age": {"type": "number"}
+            },
+            "required": ["age"]
+        }
+    },
+    {
+        "name": "calculate_emergency_fund",
+        "description": "Checks if user has adequate emergency fund and calculates the gap",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "monthly_expenses": {"type": "number"}
+            },
+            "required": ["monthly_expenses"]
+        }
+    },
+    {
+        "name": "calculate_net_worth",
+        "description": "Calculates total assets minus liabilities and net worth health",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "include_illiquid": {"type": "boolean"}
+            },
+            "required": ["include_illiquid"]
+        }
+    },
+    {
+        "name": "calculate_health_score",
+        "description": "Calculates overall financial health score from 0-100 with grade",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "detailed": {"type": "boolean"}
+            },
+            "required": ["detailed"]
+        }
+    },
+    {
+        "name": "allocate_surplus",
+        "description": "Allocates surplus across emergency fund, debt, tax saving, and wealth building",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "surplus": {"type": "number"}
+            },
+            "required": ["surplus"]
+        }
     }
 ]
 
@@ -80,10 +135,44 @@ def fiduciary_executor(tool_name: str, tool_input: dict, user: UserFinancialProf
     if tool_name == "calculate_surplus":
         result = calculate_investable_surplus(user)
         return f"Monthly surplus: ₹{result}"
+    
     elif tool_name == "check_debt_priority":
+        if not user.existing_debts:
+            return "No debts found."
         highest_debt = max(user.existing_debts, key=lambda d: d.interest_rate)
         result = should_clear_debt(highest_debt)
-        return f"Should clear debt first: {result}. Highest rate: {highest_debt.interest_rate}%"
+        return f"Should clear debt first: {result}. Highest rate: {highest_debt.interest_rate}% on {highest_debt.debt_type}"
+    
+    elif tool_name == "calculate_risk_profile":
+        result = calculate_risk_profile(user)
+        return f"Risk Profile: {result['risk_profile']} (Score: {result['risk_score']}/100). {result['description']}"
+    
+    elif tool_name == "calculate_emergency_fund":
+        result = calculate_emergency_fund(user)
+        return f"Emergency Fund: {result['status']}. {result['months_covered']} months covered. Gap: ₹{result['gap']}. {result['message']}"
+    
+    elif tool_name == "calculate_net_worth":
+        result = calculate_net_worth(user)
+        return f"Net Worth: ₹{result['net_worth']}. Status: {result['net_worth_health']}. Assets: ₹{result['total_assets']}. Liabilities: ₹{result['total_liabilities']}"
+    
+    elif tool_name == "calculate_health_score":
+        result = calculate_financial_health_score(user)
+        breakdown = " | ".join([
+            f"{k}: {v['score']}/{v['max']}"
+            for k, v in result['breakdown'].items()
+        ])
+        return f"Health Score: {result['total_score']}/100 ({result['grade']} - {result['status']}). Breakdown: {breakdown}"
+    
+    elif tool_name == "allocate_surplus":
+        surplus = calculate_investable_surplus(user)
+        result = allocate_surplus(user, surplus)
+        if result['status'] == 'NO_SURPLUS':
+            return "No surplus available for allocation."
+        allocations = " | ".join([
+            f"{k}: ₹{v}" for k, v in result['allocations'].items()
+        ])
+        return f"Surplus Allocation: {allocations}"
+    
     return "Tool not found"
 
 def react_fiduciary_agent(state: VaultState) -> VaultState:
@@ -108,14 +197,20 @@ def react_fiduciary_agent(state: VaultState) -> VaultState:
         financial_health = "CAUTION"
     else:
         financial_health = "HEALTHY"
+
+    risk = calculate_risk_profile(user)
+    emergency = calculate_emergency_fund(user)
+    nw = calculate_net_worth(user)
+    health = calculate_financial_health_score(user)
+    goal_alloc = allocate_surplus(user, surplus)
     
     # Now get LLM verdict
-    memo = react_engine(
+    response, core_directive, team_brief = react_engine(
         user=user,
         persona=FIDUCIARY_PERSONA,
         tools=FIDUCIARY_TOOLS,
         tool_executor=fiduciary_executor,
-        user_query="Assess my complete financial situation and give your verdict.",
+        user_query=state.get("user_query", "Assess my complete financial situation."),
         state=state
     )
     
@@ -123,5 +218,12 @@ def react_fiduciary_agent(state: VaultState) -> VaultState:
         "investable_surplus": surplus,
         "debt_priority": debt_priority,
         "financial_health": financial_health,
-        "agent_memos": {"fiduciary": memo}
+        "risk_assessment": risk,
+        "emergency_fund_status": emergency,
+        "net_worth_data": nw,
+        "health_score": health,
+        "goal_allocation": goal_alloc,
+        "logic_anchor": core_directive,
+        "agent_memos": {"Chief Fiduciary": response},
+        "team_awareness": {"Chief Fiduciary": team_brief}
     }

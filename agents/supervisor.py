@@ -9,34 +9,47 @@ load_dotenv()
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
 AGENT_ROSTER = {
-    "fiduciary": "Assesses complete financial situation, blocks harmful decisions, gives overall verdict.",
-    "debt": "Analyzes debt emergency, calculates surplus, creates debt repayment plan.",
-    "tax": "Finds unused tax saving opportunities, calculates exact rupee savings under 80C.",
-    "insurance": "Identifies critical life and health insurance gaps, quantifies family risk.",
-    "retirement": "Calculates inflation-adjusted retirement corpus and required monthly SIP.",
-    "sip": "Creates investment plan, recommends SIP allocation based on goals and surplus."
+    "debt": "Debt Strategist — analyzes debt emergency, balance transfer, prepayment, cheapest capital.",
+    "tax": "Tax Optimizer — finds 80C gaps, LTCG/STCG, HRA, family tax arbitrage, ESOP tax.",
+    "insurance": "Risk Analyst — identifies insurance gaps, surrender value analysis, premium estimates.",
+    "retirement": "Retirement Planner — corpus calculation, EPF projection, education goals, post-retirement income.",
+    "investment": "Investment Advisor — SIP allocation, asset allocation, step-up SIP, lumpsum vs STP."
 }
 
 def supervisor_node(state: VaultState) -> VaultState:
     user_message = state.get("user_query", "Give me a complete financial analysis.")
     
+    # Include financial health context for better routing
+    health = state.get("health_score", {})
+    financial_health = state.get("financial_health", "UNKNOWN")
+    surplus = state.get("investable_surplus", "unknown")
+
     roster_text = "\n".join(
         f"- {name}: {desc}"
         for name, desc in AGENT_ROSTER.items()
     )
 
-    prompt = f"""You are a financial supervisor managing a team of specialist agents.
+    prompt = f"""You are a routing supervisor for a financial advisory system.
 
 User's financial snapshot:
 - Monthly Income: ₹{state['user'].monthly_income}
 - Monthly Expense: ₹{state['user'].monthly_expense}
 - Existing Debts: {len(state['user'].existing_debts)}
 - Tax Regime: {state['user'].tax_regime}
+- Financial Health: {financial_health}
+- Investable Surplus: ₹{surplus}
+- Health Score: {health.get('total_score', 'N/A')}/100
 
-Available agents:
+Available specialist agents (Fiduciary already ran and set the anchor):
 {roster_text}
 
 User's question: {user_message}
+
+ROUTING RULES:
+1. Full analysis or "what should I do" → include all 5 agents
+2. Specific question → only relevant agents (max 2-3)
+3. Always respect financial health — if EMERGENCY, debt agent is mandatory
+4. Agent names must exactly match: debt, tax, insurance, retirement, investment
 
 Respond ONLY in this JSON format, nothing else:
 {{
@@ -55,6 +68,9 @@ Respond ONLY in this JSON format, nothing else:
     decision = SupervisorDecision(**parsed)
 
     return {
-        "supervisor_decision": {"agents_to_call": decision.agents_to_call, "reasoning": decision.reasoning},
+        "supervisor_decision": {
+            "agents_to_call": decision.agents_to_call,
+            "reasoning": decision.reasoning
+        },
         "active_agents": decision.agents_to_call
     }

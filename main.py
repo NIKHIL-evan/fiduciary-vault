@@ -6,10 +6,10 @@ from agents.react_debt_agent import react_debt_agent
 from agents.react_tax_agent import react_tax_agent
 from agents.react_insurance_agent import react_insurance_agent
 from agents.react_retirement_agent import react_retirement_agent
-from agents.react_sip_agent import react_sip_agent
-from agents.synthesizer_agent import synthesizer_agent
+from agents.react_investment_agent import react_investment_agent
 from agents.supervisor import supervisor_node
-from schemas.user_profile import UserFinancialProfile, DebtProfile, InvestmentProfile, DependentProfile
+from schemas.user_profile import UserFinancialProfile, DebtProfile, InvestmentProfile, FamilyMember
+from langgraph.checkpoint.memory import MemorySaver
 
 def make_node(agent_fn, agent_name: str):
     def node(state: VaultState) -> VaultState:
@@ -28,8 +28,7 @@ graph.add_node("debt", make_node(react_debt_agent, "debt"))
 graph.add_node("tax", make_node(react_tax_agent, "tax"))
 graph.add_node("insurance", make_node(react_insurance_agent, "insurance"))
 graph.add_node("retirement", make_node(react_retirement_agent, "retirement"))
-graph.add_node("sip", make_node(react_sip_agent, "sip"))
-graph.add_node("report", synthesizer_agent)
+graph.add_node("investment", make_node(react_investment_agent, "investment"))
 
 graph.set_entry_point("ingestion")
 graph.add_edge("ingestion", "fiduciary")
@@ -38,11 +37,11 @@ graph.add_edge("supervisor", "debt")
 graph.add_edge("debt", "tax")
 graph.add_edge("tax", "insurance")
 graph.add_edge("insurance", "retirement")
-graph.add_edge("retirement", "sip")
-graph.add_edge("sip", "report")
-graph.set_finish_point("report")
+graph.add_edge("retirement", "investment")
+graph.set_finish_point("investment")
 
-app = graph.compile()
+memory = MemorySaver()
+app = graph.compile(checkpointer=memory)
 
 rajesh = UserFinancialProfile(
     name="Rajesh Kumar",
@@ -51,10 +50,9 @@ rajesh = UserFinancialProfile(
     monthly_expense=65000,
     term_insurance_cover=5000000,
     health_insurance_cover=300000,
-    dependents=[
-        DependentProfile(relation="spouse", age=35, monthly_expense=20000),
-        DependentProfile(relation="child", age=12, monthly_expense=15000),
-        DependentProfile(relation="parent", age=65, monthly_expense=10000)
+    family_members=[
+        FamilyMember(relation="spouse", age=32, monthly_expense=15000, is_dependent=True, tax_bracket=0),
+        FamilyMember(relation="child", age=8, monthly_expense=10000, is_dependent=True, tax_bracket=0),
     ],
     existing_debts=[
         DebtProfile(debt_type="credit_card", amount=180000, interest_rate=42, min_payment=5400),
@@ -72,16 +70,25 @@ rajesh = UserFinancialProfile(
     tax_regime="old"
 )
 
-result = app.invoke({
+result = app.invoke(
+    {
         "user": rajesh,
         "cas_pdf_path": None,
         "pdf_password": "",
         "agent_memos": {},
+        "team_awareness": {},
         "user_query": "Give me a complete financial analysis"
-    })
+    },
+    config={"configurable": {"thread_id": "rajesh_123"}}
+)
 
 print("\nAgents that ran:")
 for agent in result["agent_memos"].keys():
     print(f"  - {agent}")
 
-print(result["final_report"])
+print("\n" + "="*60)
+for agent, response in result["agent_memos"].items():
+    print(f"\n[{agent.upper()}]")
+    print("="*60)
+    print(response)
+    print()

@@ -3,59 +3,64 @@ from calculators.tax_savings import calculate_tax_savings
 from agents.react_engine import react_engine
 from schemas.states import VaultState
 
-TAX_PERSONA = """You are CA Priya Sharma — Chartered Accountant specializing in Indian tax optimization, 12 years experience.
-Your clients pay for exact rupee savings. You are precise, data-driven, and always cite current regulations.
+TAX_PERSONA = """You are CA Priya Sharma — Tax Optimizer.
+You are speaking in a group chat. The Chief Fiduciary has already spoken and set the direction.
 
 IDENTITY:
-You speak like a sharp, no-nonsense CA who respects the client's intelligence.
-You never give vague advice like "invest in 80C." You say exactly how much, in which instrument, and the exact tax saved.
-
-ADAPTIVE RESPONSE RULE (MOST IMPORTANT):
-- Simple question → answer in 2-3 lines with exact rupee amount
-- "Which regime is better for me?" → direct answer with numbers, no essay
-- Detailed analysis requested → full structured format below
-- Knowledgeable user → skip basics, go straight to optimization strategy
-- Confused user → explain with simple examples ("at 30% slab, every ₹1 you invest in ELSS saves ₹0.30 in tax")
-- Never write a report when user asks a simple question
+You are precise, methodical, and numbers-first. Every rupee saved in tax is a victory.
+You speak like a professional who has studied the tax code so the client doesn't have to.
+You address the user directly by name. You never give vague advice.
 
 RESEARCH RULE:
-Always use search_tax_regulations to verify current AY tax slabs, 80C limits, and deduction rules before advising.
-Use calculate_tax_savings for exact rupee calculations.
-Never quote tax rates or limits from memory — regulations change every budget.
+Always use search_tax_regulations to verify current AY tax slabs, 80C limits before advising.
+Never quote tax rates from memory — regulations change every budget.
+REASONING RULE:
+If no specific calculator exists for the user's question:
+1. Use available calculators creatively to get relevant numbers
+2. Use search tools to get current rates and data
+3. Reason with those numbers to give a precise answer
+Never say "I don't have a tool for that."
+Always find a way to give a number-backed answer.
 
-TAX OPTIMIZATION HIERARCHY:
-1. Identify tax slab from income
-2. Check 80C utilization (limit: ₹1.5 lakh)
-3. Check 80CCD(1B) — NPS additional ₹50,000
-4. Check 80D — health insurance premiums
-5. Check Section 24(b) — home loan interest up to ₹2 lakh
-6. Regime comparison — old vs new, recommend based on actual numbers
+ADAPTIVE RESPONSE RULE:
+- Full analysis → complete tax picture, all sections, exact rupees saved
+- Specific question → exact number, one section, done
+- Casual question → clean professional answer, no jargon
 
-DOMAIN BOUNDARIES:
-- NO investment advice beyond tax instruments
-- NO debt advice — redirect to Debt Specialist
-- Only recommend SEBI registered Indian instruments — PPF, ELSS, NPS, NSC
+GROUP CHAT RULES:
+1. RELEVANCE: If query is strictly about debt clearance or car purchase with zero tax implications → output exactly: SKIP
+2. THE ANCHOR: Read CORE_DIRECTIVE silently. Align tax strategy with financial health.
+   Never say "As Ramesh said." Open with YOUR tax insight.
+3. TEAM AWARENESS: Read TEAM_BRIEFs. If Investment Advisor mentioned ELSS, confirm the tax math.
+   If Debt Strategist mentioned home loan, calculate Section 24(b) immediately.
 
-FULL REPORT FORMAT (only when full analysis requested):
-💰 YOUR TAX SITUATION
-[Current regime, slab, annual tax liability — one line each]
+ANTI-REPETITION RULE:
+Never validate another specialist's point.
+Open directly with your tax finding.
 
-✅ TAX SAVINGS AVAILABLE (ranked by rupee impact)
-1. [Section] → [Exact rupees saved]
-2. [Section] → [Exact rupees saved]
-3. [Section] → [Exact rupees saved]
+PROACTIVE ADVICE:
+Hunt for every missed deduction. 80C, 80D, 80CCD(1B), Section 24(b).
+Always compare old vs new regime with exact rupee difference.
+Never leave money on the table.
 
-🔄 REGIME RECOMMENDATION
-[Old vs New — exact difference in rupees, clear winner]
+TAX HIERARCHY:
+1. Tax slab identification
+2. 80C utilization (₹1.5L limit)
+3. 80CCD(1B) NPS (₹50k additional)
+4. 80D health insurance
+5. Section 24(b) home loan interest
+6. Regime comparison
 
-⚡ ACTION BEFORE MARCH 31ST
-[Time-sensitive actions with deadlines]
+DOMAIN: Only SEBI registered instruments — PPF, ELSS, NPS, NSC.
 
-LANGUAGE RULES:
-- Always show tax savings in exact rupees, never percentages alone
-- Explain every section in plain language before citing it
-- Maximum 150 words for simple queries
-- Maximum 300 words for full analysis"""
+RESPONSE FORMAT:
+Natural paragraphs. Exact rupees always. Professional tone.
+No headers. No templates.
+
+TEAM_BRIEF FORMAT (MANDATORY — hidden from user):
+TEAM_BRIEF: STATUS: [EMERGENCY/CAUTION/HEALTHY] | PLAN: [your recommendation within 20 words] | BLOCKED: [what you blocked] | KEY_NUMBER: [most critical figure]
+
+LANGUAGE: English. Precise. Professional. Numbers-first. Use Hindi When you want to connect to the user"""
 
 TAX_TOOLS =[{
         "name": "calculate_tax_savings",
@@ -78,7 +83,70 @@ TAX_TOOLS =[{
         },
         "required": ["query"]
         }
-    }]
+    },
+    {
+    "name": "calculate_capital_gains_tax",
+    "description": "Calculates LTCG or STCG tax on mutual fund or stock sale",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "purchase_value": {"type": "number"},
+            "sale_value": {"type": "number"},
+            "holding_months": {"type": "number"},
+            "asset_type": {"type": "string"}
+        },
+        "required": ["purchase_value", "sale_value", "holding_months", "asset_type"]
+    }
+},
+{
+    "name": "calculate_hra_exemption",
+    "description": "Calculates HRA tax exemption based on rent paid and salary",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "rent_paid_annual": {"type": "number"},
+            "is_metro": {"type": "boolean"}
+        },
+        "required": ["rent_paid_annual", "is_metro"]
+    }
+},
+{
+    "name": "calculate_tax_harvesting",
+    "description": "Finds tax saving opportunity by selling losing investments to offset gains",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "total_gains": {"type": "number"},
+            "total_losses": {"type": "number"}
+        },
+        "required": ["total_gains", "total_losses"]
+    }
+},
+{
+    "name": "calculate_family_tax_arbitrage",
+    "description": "Calculates tax saved by gifting investments to low-bracket family member",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "investment_amount": {"type": "number"},
+            "investment_return_percent": {"type": "number"},
+            "family_member_relation": {"type": "string"}
+        },
+        "required": ["investment_amount", "investment_return_percent", "family_member_relation"]
+    }
+},
+{
+    "name": "calculate_esop_tax",
+    "description": "Calculates perquisite tax owed on ESOP/RSU vesting",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "vesting_value": {"type": "number"},
+            "purchase_price": {"type": "number"}
+        },
+        "required": ["vesting_value", "purchase_price"]
+    }
+}]
     
 
 
@@ -94,19 +162,77 @@ def tax_executor(tool_name: str, tool_input: dict, user: UserFinancialProfile) -
     elif tool_name == "search_tax_regulations":
         from tools.search_tool import search_domain
         query = tool_input.get("query")
-        print(f"[SEARCH CALLED] Query: {query}")
         return search_domain(query, "tax")
+    
+    elif tool_name == "calculate_capital_gains_tax":
+        from calculators.ltcg_stcg import calculate_capital_gains_tax
+        result = calculate_capital_gains_tax(
+            purchase_value=tool_input.get("purchase_value"),
+            sale_value=tool_input.get("sale_value"),
+            holding_months=int(tool_input.get("holding_months")),
+            asset_type=tool_input.get("asset_type", "equity"),
+            tax_bracket=30
+        )
+        return f"Capital gains tax: {result}"
+
+    elif tool_name == "calculate_hra_exemption":
+        from calculators.hra_calculator import calculate_hra_exemption
+        result = calculate_hra_exemption(
+            basic_salary_annual=user.monthly_income * 0.5 * 12,
+            hra_received_annual=user.monthly_income * 0.4 * 12,
+            rent_paid_annual=tool_input.get("rent_paid_annual"),
+            is_metro=tool_input.get("is_metro", True)
+        )
+        return f"HRA exemption: {result}"
+
+    elif tool_name == "calculate_tax_harvesting":
+        from calculators.tax_harvesting import calculate_tax_harvesting
+        gains = [{"gain": tool_input.get("total_gains"), "holding_months": 13}]
+        losses = [{"loss": tool_input.get("total_losses")}]
+        result = calculate_tax_harvesting(gains=gains, losses=losses)
+        return f"Tax harvesting opportunity: {result}"
+
+    elif tool_name == "calculate_family_tax_arbitrage":
+        from calculators.family_tax_arbitrage import calculate_family_tax_arbitrage
+        relation = tool_input.get("family_member_relation", "parent")
+        family_member = next(
+            (m for m in user.family_members if relation.lower() in m.relation.lower()),
+            None
+        )
+        family_bracket = family_member.tax_bracket if family_member else 0
+        result = calculate_family_tax_arbitrage(
+            investment_amount=tool_input.get("investment_amount"),
+            investment_return_percent=tool_input.get("investment_return_percent", 7),
+            user_tax_bracket=30,
+            family_member_tax_bracket=family_bracket,
+            family_member_relation=relation
+        )
+        return f"Family tax arbitrage: {result}"
+
+    elif tool_name == "calculate_esop_tax":
+        from calculators.esop_tax import calculate_esop_tax
+        result = calculate_esop_tax(
+            vesting_value=tool_input.get("vesting_value"),
+            purchase_price=tool_input.get("purchase_price", 0),
+            tax_bracket=30
+        )
+        return f"ESOP tax calculation: {result}"
 
     return "Tool not found"
 
 
 def react_tax_agent(state: VaultState) -> VaultState:
-    memo = react_engine(
+    response, core_directive, team_brief = react_engine(
         user=state["user"],
         persona=TAX_PERSONA,
         tools=TAX_TOOLS,
         tool_executor=tax_executor,
-        user_query="Analyze my tax situation and tell me how to save maximum tax.",
+        user_query=state.get("user_query", "Analyze my tax situation and tell me how to save maximum tax."),
         state=state
     )
-    return {"agent_memos": {"tax": memo}}
+    if response.strip() == "SKIP":
+        return {}
+    return {
+        "agent_memos": {"Tax Optimizer": response},
+        "team_awareness": {"Tax Optimizer": team_brief}
+    }
